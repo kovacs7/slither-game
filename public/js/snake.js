@@ -1,4 +1,6 @@
 Nball = 13;
+const playerName = window.PLAYER_NAME || "Player";
+
 class snake {
     constructor(name, game, score, x, y) {
         this.name = name;
@@ -29,7 +31,7 @@ class snake {
     update() {
         this.time--;
         this.angle = this.getAngle(this.dx, this.dy);
-        if (this.name != "HaiZuka") {
+        if (this.name != playerName) {
             if (this.time > 90)
                 this.speed = 2;
             else

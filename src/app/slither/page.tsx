@@ -1,28 +1,43 @@
-// pages/play.tsx
 "use client";
 
 import { useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 
 export default function PlayPage() {
+  const searchParams = useSearchParams();
+  const username = searchParams.get("username");
+
   useEffect(() => {
+    if (!username) return;
+
+    // Set global variable for game.js to read
+    (window as any).PLAYER_NAME = username;
+
     const loadScripts = async () => {
-      // Load in correct order
       await loadScript("/js/food.js");
       await loadScript("/js/snake.js");
       await loadScript("/js/game.js");
     };
 
     const loadScript = (src: string) =>
-      new Promise((resolve, reject) => {
+      new Promise<void>((resolve, reject) => {
+        // 🛑 Check if script is already present
+        if (document.querySelector(`script[src="${src}"]`)) {
+          resolve(); // Already loaded
+          return;
+        }
+
+        // ✅ Create and append script
         const script = document.createElement("script");
         script.src = src;
-        script.async = false; // preserve execution order
-        script.onload = resolve;
-        script.onerror = reject;
+        script.async = false;
+        script.onload = () => resolve();
+        script.onerror = () => reject(`Failed to load ${src}`);
         document.body.appendChild(script);
       });
 
     loadScripts().catch(console.error);
-  }, []);
+  }, [username]);
 
+  return null;
 }

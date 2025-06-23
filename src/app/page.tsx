@@ -43,7 +43,7 @@ export default function HomePage() {
     if (playerName.trim()) {
       // Here you would navigate to the game
       console.log("Entering game with name:", playerName);
-      router.push('/slither')
+      router.push(`/slither?username=${encodeURIComponent(playerName)}`);
     }
   };
 
