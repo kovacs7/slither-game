@@ -1,7 +1,7 @@
 game_W = 0, game_H = 0;
 
 var bg_im = new Image();
-bg_im.src = "images/Map2.png";
+bg_im.src = "/images/Map2.png";
 SPEED = 1;
 MaxSpeed = 0;
 chX = chY = 1;
@@ -342,4 +342,6 @@ class game {
     }
 }
 
-var g = new game();
+bg_im.onload = () => {
+  new game();
+};

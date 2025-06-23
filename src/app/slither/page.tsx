@@ -1,21 +1,28 @@
-import Script from "next/script";
+// pages/play.tsx
+"use client";
 
-export const metadata = {
-  title: "Slither Game",
-  description: "A Slither.io clone built in Next.js",
-};
+import { useEffect } from "react";
 
-export default function SlitherGame() {
-  return (
-    <div>
-      {/* Canvas element where the game will render */}
-      <canvas id="canvas" width="1200" height="800"></canvas>
+export default function PlayPage() {
+  useEffect(() => {
+    const loadScripts = async () => {
+      // Load in correct order
+      await loadScript("/js/food.js");
+      await loadScript("/js/snake.js");
+      await loadScript("/js/game.js");
+    };
 
-      {/* Load external vanilla JS scripts after DOM is interactive */}
-      <Script src="/js/food.js" strategy="afterInteractive" />
-      <Script src="/js/player.js" strategy="afterInteractive" />
-      <Script src="/js/snake.js" strategy="afterInteractive" />
-      <Script src="/js/main.js" strategy="afterInteractive" />
-    </div>
-  );
+    const loadScript = (src: string) =>
+      new Promise((resolve, reject) => {
+        const script = document.createElement("script");
+        script.src = src;
+        script.async = false; // preserve execution order
+        script.onload = resolve;
+        script.onerror = reject;
+        document.body.appendChild(script);
+      });
+
+    loadScripts().catch(console.error);
+  }, []);
+
 }
