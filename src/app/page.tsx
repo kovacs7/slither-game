@@ -7,7 +7,14 @@ import { useRouter } from "next/navigation";
 export default function HomePage() {
   const [playerName, setPlayerName] = useState("");
   const [isGlowing, setIsGlowing] = useState(false);
-  const [particles, setParticles] = useState([]);
+  const [particles, setParticles] = useState<Array<{
+    id: number;
+    x: number;
+    y: number;
+    size: number;
+    speed: number;
+    opacity: number;
+  }>>([]);
   const router = useRouter();
 
   useEffect(() => {
@@ -47,7 +54,12 @@ export default function HomePage() {
     }
   };
 
-  const handleKeyPress = (e) => {
+  // Define the interface for the keyboard event
+  interface KeyboardEventWithKey extends React.KeyboardEvent<HTMLInputElement> {
+    key: string;
+  }
+
+  const handleKeyPress = (e: KeyboardEventWithKey): void => {
     if (e.key === "Enter") {
       handleEnterGame();
     }

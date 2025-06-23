@@ -11,7 +11,10 @@ export default function PlayPage() {
     if (!username) return;
 
     // Set global variable for game.js to read
-    (window as any).PLAYER_NAME = username;
+    interface CustomWindow extends Window {
+      PLAYER_NAME?: string;
+    }
+    (window as CustomWindow).PLAYER_NAME = username;
 
     const loadScripts = async () => {
       await loadScript("/js/food.js");
