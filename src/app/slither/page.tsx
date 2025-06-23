@@ -1,20 +1,23 @@
 "use client";
 
-import { useEffect } from "react";
-import { useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
 
 export default function PlayPage() {
-  const searchParams = useSearchParams();
-  const username = searchParams.get("username");
+  const [username, setUsername] = useState<string | null>(null);
+ 
 
   useEffect(() => {
-    if (!username) return;
+    const searchParams = new URLSearchParams(window.location.search);
+    const uname = searchParams.get("username");
+    setUsername(uname);
+
+    if (!uname) return;
 
     // Set global variable for game.js to read
     interface CustomWindow extends Window {
       PLAYER_NAME?: string;
     }
-    (window as CustomWindow).PLAYER_NAME = username;
+    (window as CustomWindow).PLAYER_NAME = uname;
 
     const loadScripts = async () => {
       await loadScript("/js/food.js");
