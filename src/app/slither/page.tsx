@@ -15,10 +15,10 @@ export default function PlayPage() {
   useEffect(() => {
     if (!username) return;
 
-    // Set global player name for game logic
+    // Set global player name
     (window as any).PLAYER_NAME = username;
 
-    // Global function for sending updates from game.js
+    // Function to update player position in Supabase
     (window as any).updatePlayerInSupabase = async ({
       name,
       x,
@@ -43,8 +43,14 @@ export default function PlayPage() {
         .eq("id", playerIdRef.current);
     };
 
+    // Initialize player in Supabase
     const initPlayer = async () => {
       if (playerIdRef.current) return;
+
+      if (sessionStorage.getItem("player-initialized")) {
+        console.log("⚠️ Player already initialized this session");
+        return;
+      }
 
       const { data, error } = await supabase
         .from("players")
@@ -58,8 +64,10 @@ export default function PlayPage() {
       }
 
       playerIdRef.current = data.id;
+      sessionStorage.setItem("player-initialized", "true");
     };
 
+    // Subscribe to other player updates
     const subscribeToPlayers = () => {
       if (hasSubscribed.current) return;
       hasSubscribed.current = true;
@@ -72,10 +80,29 @@ export default function PlayPage() {
           { event: "*", schema: "public", table: "players" },
           (payload) => {
             const player = payload.new;
-            if (player.username === username) return; // Skip self
+            if (player.username === username) return;
+
             console.log("👾 Other player updated:", player);
 
-            // TODO: Create or update the other player’s snake
+            if (!window.otherPlayerSnakes) window.otherPlayerSnakes = {};
+
+            if (!window.otherPlayerSnakes[player.username]) {
+              const s = new window.snake(
+                player.username,
+                window.gameInstance,
+                player.score || 0,
+                player.x,
+                player.y
+              );
+              s.dx = 0;
+              s.dy = 0;
+              window.otherPlayerSnakes[player.username] = s;
+            } else {
+              const s = window.otherPlayerSnakes[player.username];
+              s.v[0].x = player.x;
+              s.v[0].y = player.y;
+              s.score = player.score;
+            }
           }
         )
         .subscribe((status) => {
@@ -87,6 +114,7 @@ export default function PlayPage() {
       channelRef.current = channel;
     };
 
+    // Dynamically load JS files
     const loadScript = (src: string): Promise<void> =>
       new Promise((resolve, reject) => {
         if (document.querySelector(`script[src="${src}"]`)) {
@@ -105,18 +133,27 @@ export default function PlayPage() {
       await loadScript("/js/food.js");
       await loadScript("/js/snake.js");
       await loadScript("/js/game.js");
+
+      if (
+        typeof window.snake !== "function" ||
+        typeof window.game !== "function"
+      ) {
+        console.error("❌ Global constructors not loaded");
+        return;
+      }
+
+      const gameInstance = new window.game();
+      window.gameInstance = gameInstance;
     };
 
-    if (sessionStorage.getItem("player-initialized")) return;
-    sessionStorage.setItem("player-initialized", "true");
-
-    // Init the player, subscribe, then load game
+    // Run on mount
     (async () => {
       await initPlayer();
       subscribeToPlayers();
       await loadScripts();
     })().catch(console.error);
 
+    // Cleanup
     return () => {
       if (playerIdRef.current) {
         supabase.from("players").delete().eq("id", playerIdRef.current);
@@ -126,6 +163,7 @@ export default function PlayPage() {
         channelRef.current = null;
         hasSubscribed.current = false;
       }
+      sessionStorage.removeItem("player-initialized");
     };
   }, [username]);
 
