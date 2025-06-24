@@ -88,6 +88,24 @@ class snake {
             this.v[this.v.length] = { x: this.v[this.v.length - 1].x, y: this.v[this.v.length - 1].y };
         } else
             this.v = this.v.slice(0, N);
+
+        // new part
+        if (this.name === window.PLAYER_NAME) {
+          if (typeof window.updatePlayerInSupabase === "function") {
+            // console.log("Sending to Supabase:", {
+            //   x: this.v[0].x,
+            //   y: this.v[0].y,
+            //   score: this.score,
+            // });
+
+            window.updatePlayerInSupabase({
+              name: this.name,
+              x: this.v[0].x,
+              y: this.v[0].y,
+              score: this.score,
+            });
+          }
+        }
     }
 
     draw() {

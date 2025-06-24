@@ -9,15 +9,27 @@ export default function PlayPage() {
   const username = searchParams.get("username");
 
   const playerIdRef = useRef<string | null>(null);
+  const channelRef = useRef<any>(null);
+  const hasSubscribed = useRef(false);
 
   useEffect(() => {
     if (!username) return;
 
-    // Set the global PLAYER_NAME so game.js can read it
+    // Set global player name for game logic
     (window as any).PLAYER_NAME = username;
 
-    // Global function called from game.js to update this player in Supabase
-    (window as any).updatePlayerInSupabase = async ({ name, x, y, score }) => {
+    // Global function for sending updates from game.js
+    (window as any).updatePlayerInSupabase = async ({
+      name,
+      x,
+      y,
+      score,
+    }: {
+      name: string;
+      x: number;
+      y: number;
+      score: number;
+    }) => {
       if (!playerIdRef.current) return;
 
       await supabase
@@ -32,7 +44,8 @@ export default function PlayPage() {
     };
 
     const initPlayer = async () => {
-      // Insert this player into Supabase
+      if (playerIdRef.current) return;
+
       const { data, error } = await supabase
         .from("players")
         .insert({ username, x: 0, y: 0, score: 0 })
@@ -40,39 +53,44 @@ export default function PlayPage() {
         .single();
 
       if (error) {
-        console.error("Error inserting player:", error.message);
+        console.error("❌ Supabase insert error:", error.message);
         return;
       }
 
       playerIdRef.current = data.id;
+    };
 
-      // Realtime subscription to all other players
-      supabase
-        .channel("realtime:players")
+    const subscribeToPlayers = () => {
+      if (hasSubscribed.current) return;
+      hasSubscribed.current = true;
+
+      const channel = supabase.channel("realtime:players");
+
+      channel
         .on(
           "postgres_changes",
           { event: "*", schema: "public", table: "players" },
           (payload) => {
             const player = payload.new;
-            if (player.username === username) return; // skip self
+            if (player.username === username) return; // Skip self
+            console.log("👾 Other player updated:", player);
 
-            // TODO: You can update visual snakes here based on other players
-            console.log("Another player moved:", player);
+            // TODO: Create or update the other player’s snake
           }
         )
-        .subscribe();
-    };
+        .subscribe((status) => {
+          if (status === "SUBSCRIBED") {
+            console.log("✅ Subscribed to realtime:players");
+          }
+        });
 
-    const loadScripts = async () => {
-      await loadScript("/js/food.js");
-      await loadScript("/js/snake.js");
-      await loadScript("/js/game.js");
+      channelRef.current = channel;
     };
 
     const loadScript = (src: string): Promise<void> =>
       new Promise((resolve, reject) => {
         if (document.querySelector(`script[src="${src}"]`)) {
-          resolve(); // Already loaded
+          resolve();
           return;
         }
         const script = document.createElement("script");
@@ -83,12 +101,30 @@ export default function PlayPage() {
         document.body.appendChild(script);
       });
 
-    initPlayer().then(loadScripts).catch(console.error);
+    const loadScripts = async () => {
+      await loadScript("/js/food.js");
+      await loadScript("/js/snake.js");
+      await loadScript("/js/game.js");
+    };
 
-    // Cleanup: remove player on unmount
+    if (sessionStorage.getItem("player-initialized")) return;
+    sessionStorage.setItem("player-initialized", "true");
+
+    // Init the player, subscribe, then load game
+    (async () => {
+      await initPlayer();
+      subscribeToPlayers();
+      await loadScripts();
+    })().catch(console.error);
+
     return () => {
       if (playerIdRef.current) {
         supabase.from("players").delete().eq("id", playerIdRef.current);
+      }
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+        hasSubscribed.current = false;
       }
     };
   }, [username]);
